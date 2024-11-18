@@ -49,8 +49,11 @@
                     <label for="password">Password:</label>
                     <input type="password" id="password" name="password" required class="form-control"><br>
                     <button type="submit" class="btn btn-primary">Login</button>
+                    <button type="submit" class="btn btn-primary">Logout</button>
                     <p id="loginError" style="color: red;"></p>
                 </form>
+
+                <button id="registerBtn" class="btn btn-secondary mt-3">Register</button>
 
                 <!-- Кнопки смены цвета и темы -->
                 <div class="color-button-container mt-4">
@@ -117,22 +120,129 @@
         loginModal.show();
     });
 
-    // Функция валидации формы входа
-    document.getElementById('loginForm').addEventListener('submit', function(event) {
-        event.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
+    // Функция для входа
+    function validateLogin() {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
         const loginError = document.getElementById('loginError');
+        let isValid = true;
 
-        if (username === "" || password === "") {
-            loginError.textContent = "Both fields are required!";
+        // Сброс сообщений об ошибках
+        loginError.textContent = "";
+
+        // Проверка на пустые поля
+        if (!username) {
+            loginError.textContent = "Username is required.";
+            isValid = false;
+        } else if (!password) {
+            loginError.textContent = "Password is required.";
+            isValid = false;
         } else {
-            loginError.textContent = "";
-            alert('Logged in successfully!');
-            var loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+            const users = JSON.parse(localStorage.getItem('users')) || {
+                "admin": "admin123",
+                "user": "user123",
+                "guest": "guest123"
+            };
+
+            if (!users[username]) {
+                loginError.textContent = "Username not found. Please register.";
+                isValid = false;
+            } else if (users[username] !== password) {
+                loginError.textContent = "Invalid password.";
+                isValid = false;
+            }
+        }
+
+        if (isValid) {
+            alert(`Welcome, ${username}!`);
+            const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
             loginModal.hide();
+
+            // Сохранить текущего пользователя в localStorage
+            localStorage.setItem('currentUser', username);
+
+            // Поменять кнопку Login на Logout
+            toggleLoginLogout(true);
+        }
+
+        return isValid;
+    }
+
+    // Функция для регистрации нового пользователя
+    function registerNewUser() {
+        const username = prompt("Enter a new username:");
+        const password = prompt("Enter a new password:");
+
+        if (username && password) {
+            const users = JSON.parse(localStorage.getItem('users')) || {};
+
+            if (users[username]) {
+                alert("User already exists. Please choose a different username.");
+                return;
+            }
+
+            users[username] = password;
+            localStorage.setItem('users', JSON.stringify(users));
+            alert(`User ${username} registered successfully!`);
+        } else {
+            alert("Registration canceled or invalid input.");
+        }
+    }
+
+    // Функция для выхода из аккаунта
+    function logoutUser() {
+        // Удалить текущего пользователя из localStorage
+        localStorage.removeItem('currentUser');
+
+        // Очистить поля ввода имени пользователя и пароля
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+
+        // Поменять кнопку Logout на Login
+        toggleLoginLogout(false);
+
+        // Показать уведомление о выходе
+        alert('You have been logged out.');
+    }
+
+    // Функция переключения кнопок Login и Logout
+    function toggleLoginLogout(isLoggedIn) {
+        const loginButton = document.querySelector('#loginForm button[type="submit"]:first-child');
+        const logoutButton = document.querySelector('#loginForm button[type="submit"]:last-child');
+
+        if (isLoggedIn) {
+            loginButton.style.display = 'none';
+            logoutButton.style.display = 'block';
+        } else {
+            loginButton.style.display = 'block';
+            logoutButton.style.display = 'none';
+        }
+    }
+
+    // Привязка событий к кнопкам
+    document.getElementById('loginForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        // Проверяем, какая кнопка была нажата
+        const submitButton = document.activeElement;
+        if (submitButton.textContent === 'Login') {
+            validateLogin();
+        } else if (submitButton.textContent === 'Logout') {
+            logoutUser();
         }
     });
+
+    // Обработчик для кнопки регистрации
+    document.getElementById('registerBtn').addEventListener('click', registerNewUser);
+
+    // Проверка текущего пользователя при загрузке страницы
+    window.addEventListener('load', function () {
+        const currentUser = localStorage.getItem('currentUser');
+        toggleLoginLogout(!!currentUser); // Переключение кнопок в зависимости от статуса пользователя
+    });
+
+
+
 
     // Функция валидации формы контактов
     function validateForm() {
@@ -170,6 +280,8 @@
         currentColorIndex = (currentColorIndex + 1) % colors.length; // Цикл цветов
         localStorage.setItem('backgroundColor', colors[currentColorIndex]);
     }
+
+
 
     // Функция для переключения светлой и тёмной темы
     function toggleTheme() {
